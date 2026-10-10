@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DinoDía · Vista</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Trebuchet MS",Arial,sans-serif;background:linear-gradient(#d9f2e6,#fdf6e3);color:#2d4a3e;min-height:100vh}
+  .app{max-width:460px;margin:0 auto;padding:18px 16px 40px}
+  h1{margin:4px 0 0;font-size:24px;color:#2f8f6b;text-align:center}
+  h2{font-size:16px;margin:20px 0 8px}
+  .nube{margin:4px 0 12px;font-size:12px;color:#6b8f80;text-align:center;min-height:15px}
+  .ultimo{background:#fff;border-radius:18px;padding:16px;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,.08)}
+  .ultimo .em{font-size:56px;line-height:1.1}
+  .ultimo .tx{font-size:20px;font-weight:bold;margin-top:4px}
+  .ultimo .cu{font-size:13px;color:#6b8f80;margin-top:4px}
+  #aviso{display:none;background:#fff1d6;border:2px solid #e8833a;color:#8a4a12;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:15px}
+  .fila{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 14px;margin-bottom:6px;box-shadow:0 2px 5px rgba(0,0,0,.06)}
+  .fila .f{flex:1;font-size:14px;text-transform:capitalize}
+  .fila .e{font-size:24px;width:34px;text-align:center}
+  .fila .t{width:80px;font-size:13px;color:#6b8f80;text-align:right}
+  .fila.vacio{background:transparent;box-shadow:none;opacity:.55}
+  #rec{display:block;margin:18px auto 0;background:#2f8f6b;color:#fff;border:0;border-radius:14px;padding:12px 30px;font-size:16px}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🦖 DinoDía · Alba</h1>
+  <p class="nube" id="nube"></p>
+  <div id="aviso"></div>
+  <div class="ultimo" id="ultimo"></div>
+  <h2>Últimos 30 días</h2>
+  <div id="lista"></div>
+  <button id="rec">Actualizar</button>
+</div>
+
+<script>
+const API="https://api.github.com/repos/qaswed441/dinodia-datos/contents/alba.json";
+const ANIMOS=[{e:"😄",t:"Genial"},{e:"🙂",t:"Bien"},{e:"😐",t:"Regular"},{e:"😕",t:"Mal"},{e:"😢",t:"Muy mal"}];
+try{const h=new URLSearchParams(location.hash.slice(1));const x=h.get("t");
+  if(x){localStorage.setItem("dinodia_tk",x);history.replaceState(null,"",location.pathname+location.search);}}catch(e){}
+const $=id=>document.getElementById(id);
+const tk=()=>{try{return localStorage.getItem("dinodia_tk")}catch(e){return null}};
+const deb64=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,""))));
+const k=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const pf=s=>{const p=s.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);};
+const estado=t=>{$("nube").textContent=t};
+
+function pintar(datos){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const claves=Object.keys(datos).filter(x=>ANIMOS[datos[x]]).sort();
+  const u=$("ultimo"),av=$("aviso");
+  av.style.display="none";
+  if(!claves.length){
+    u.innerHTML='<div class="tx">Todavía no hay registros</div>';
+  }else{
+    const ult=claves[claves.length-1];
+    const dif=Math.round((hoy-pf(ult))/86400000);
+    const a=ANIMOS[datos[ult]];
+    const cuando=dif===0?"Hoy":dif===1?"Ayer":"Hace "+dif+" días";
+    u.innerHTML='<div class="em">'+a.e+'</div><div class="tx">'+a.t+'</div><div class="cu">Último registro: '+cuando+' ('+pf(ult).toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})+')</div>';
+    if(dif>=2){
+      av.textContent="⚠️ Alba lleva "+dif+" días sin registrar cómo se siente.";
+      av.style.display="block";
+    }
+  }
+  const lista=$("lista");lista.innerHTML="";
+  for(let i=0;i<30;i++){
+    const d=new Date(hoy);d.setDate(hoy.getDate()-i);
+    const v=datos[k(d)];
+    const f=document.createElement("div");
+    f.className="fila"+(ANIMOS[v]?"":" vacio");
+    f.innerHTML='<span class="f">'+d.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"})+'</span><span class="e">'+(ANIMOS[v]?ANIMOS[v].e:"·")+'</span><span class="t">'+(ANIMOS[v]?ANIMOS[v].t:"sin registro")+'</span>';
+    lista.appendChild(f);
+  }
+}
+
+async function cargar(){
+  const t=tk();
+  if(!t){estado("Falta el token: abre el enlace completo con #t=...");pintar({});return;}
+  estado("Cargando…");
+  try{
+    const r=await fetch(API,{headers:{Authorization:"Bearer "+t,Accept:"application/vnd.github+json"},cache:"no-store"});
+    if(r.status===404){estado("Aún no hay registros (o el token no tiene acceso al repo)");pintar({});return;}
+    if(!r.ok) throw r.status;
+    const j=await r.json();
+    pintar(JSON.parse(deb64(j.content)));
+    estado("☁️ Actualizado a las "+new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){
+    estado(e===401||e===403?"⚠️ Token no válido o caducado (error "+e+")":"📴 Sin conexión");
+  }
+}
+$("rec").onclick=cargar;
+cargar();
+</script>
+</body>
+</html>
