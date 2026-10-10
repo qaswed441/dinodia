@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DinoDía</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Trebuchet MS",Arial,sans-serif;background:linear-gradient(#d9f2e6,#fdf6e3);color:#2d4a3e;min-height:100vh}
+  .app{max-width:460px;margin:0 auto;padding:18px 16px 40px;text-align:center}
+  h1{margin:4px 0 0;font-size:26px;color:#2f8f6b;letter-spacing:1px}
+  .sub{margin:0 0 6px;font-size:13px;color:#6b8f80}
+  #dino{width:210px;height:210px;margin:6px auto 0;display:block;animation:flota 3s ease-in-out infinite}
+  @keyframes flota{50%{transform:translateY(-6px)}}
+  .burbuja{background:#fff;border-radius:18px;padding:12px 16px;margin:6px 6px 14px;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.08);position:relative;min-height:48px}
+  .burbuja:before{content:"";position:absolute;top:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-top:0;border-bottom-color:#fff}
+  h2{font-size:16px;margin:14px 0 8px}
+  .caras{display:flex;justify-content:space-between;gap:6px}
+  .cara{flex:1;background:#fff;border:3px solid transparent;border-radius:16px;padding:8px 0;font-size:30px;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:transform .15s}
+  .cara small{display:block;font-size:10px;color:#6b8f80;margin-top:2px}
+  .cara.sel{border-color:#2f8f6b;transform:scale(1.1);background:#eafaf2}
+  .racha{display:flex;gap:10px;justify-content:center;margin-top:14px}
+  .tarjeta{background:#fff;border-radius:16px;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,.08);flex:1}
+  .tarjeta b{display:block;font-size:26px;color:#e8833a}
+  .tarjeta span{font-size:12px;color:#6b8f80}
+  .semana{display:flex;justify-content:space-between;gap:4px}
+  .dsem{flex:1;background:#fff;border-radius:12px;padding:6px 0;font-size:20px}
+  .dsem small{display:block;font-size:10px;color:#6b8f80}
+  .medallas{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .med{background:#fff;border-radius:14px;padding:8px 2px;font-size:24px;opacity:.35;filter:grayscale(1)}
+  .med.ok{opacity:1;filter:none;background:#fff7d6}
+  .med small{display:block;font-size:9px;color:#6b8f80}
+  #aviso{position:fixed;left:0;right:0;bottom:20px;text-align:center;display:none}
+  #aviso span{background:#2f8f6b;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🦖 DinoDía</h1>
+  <p class="sub" id="fecha"></p>
+  <svg id="dino" viewBox="0 0 200 200"></svg>
+  <div class="burbuja" id="msg"></div>
+
+  <h2>¿Cómo te sientes hoy?</h2>
+  <div class="caras" id="caras"></div>
+
+  <div class="racha">
+    <div class="tarjeta"><b id="racha">0</b><span>días seguidos</span></div>
+    <div class="tarjeta"><b id="total">0</b><span>días en total</span></div>
+  </div>
+
+  <h2>Tu semana</h2>
+  <div class="semana" id="semana"></div>
+
+  <h2>Tus dinos</h2>
+  <div class="medallas" id="medallas"></div>
+</div>
+<div id="aviso"><span id="avisotxt"></span></div>
+
+<script>
+const ANIMOS=[
+  {e:"😄",t:"Genial"},{e:"🙂",t:"Bien"},{e:"😐",t:"Regular"},{e:"😕",t:"Mal"},{e:"😢",t:"Muy mal"}
+];
+const MSG=[
+ ["¡Qué alegría verte así! Hoy brillas más que un volcán en erupción 🌋","¡Rexi está bailando de contenta! Disfruta este día 💚"],
+ ["Qué bien que hoy estés bien. Rexi se queda a tu lado 🦕","Un día tranquilo también es un tesoro. Cuídate mucho 💚"],
+ ["Hay días así, y está bien. Rexi te acompaña, sin prisa 🌿","Tómatelo con calma hoy. Lo estás haciendo muy bien 💚"],
+ ["Lo siento mucho. Rexi te da un abrazo dinosaurio, grande y suave 🤗","Hoy toca ir despacito. Descansa todo lo que necesites 💚"],
+ ["Rexi está contigo, aunque sea un día muy duro 💚 Respira hondo, aquí no estás sola.","Un abrazo enorme. Mañana será otro día y Rexi seguirá aquí 🦕"]
+];
+const MEDALLAS=[
+ {d:1,i:"🥚",n:"Huevo"},{d:3,i:"🦎",n:"Raptor"},{d:7,i:"🦕",n:"Diplodocus"},
+ {d:14,i:"🦴",n:"Fósil"},{d:30,i:"🦖",n:"T-Rex"}
+];
+const MOUTH=[
+ '<path d="M80 98 Q100 124 120 98 Z" fill="#7a2f2f" stroke="#3b2a2a" stroke-width="3" stroke-linejoin="round"/>',
+ '<path d="M84 100 Q100 114 116 100" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/>',
+ '<path d="M88 106 L112 106" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/>',
+ '<path d="M86 110 Q100 98 114 110" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/>',
+ '<path d="M86 112 Q100 98 114 112" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/><path d="M80 82 Q76 94 82 98 Q88 94 84 84 Z" fill="#7ec8ff"/>'
+];
+
+function dino(m){
+  const ojos = m===0
+    ? '<path d="M74 82 Q82 72 90 82" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/><path d="M110 82 Q118 72 126 82" fill="none" stroke="#3b2a2a" stroke-width="4" stroke-linecap="round"/>'
+    : '<circle cx="82" cy="80" r="7" fill="#3b2a2a"/><circle cx="118" cy="80" r="7" fill="#3b2a2a"/><circle cx="84" cy="77" r="2.5" fill="#fff"/><circle cx="120" cy="77" r="2.5" fill="#fff"/>';
+  const cejas = m>=3
+    ? '<path d="M72 68 L90 72" stroke="#3b2a2a" stroke-width="3" stroke-linecap="round"/><path d="M128 68 L110 72" stroke="#3b2a2a" stroke-width="3" stroke-linecap="round"/>' : '';
+  return `
+  <path d="M150 140 Q190 150 185 180 Q160 165 140 165 Z" fill="#43b58a"/>
+  <polygon points="60,60 72,30 84,52" fill="#f0a35e"/>
+  <polygon points="88,48 100,18 112,48" fill="#f0a35e"/>
+  <polygon points="116,52 128,30 140,60" fill="#f0a35e"/>
+  <ellipse cx="100" cy="140" rx="55" ry="45" fill="#56c79a"/>
+  <ellipse cx="100" cy="152" rx="34" ry="30" fill="#c8f0dc"/>
+  <circle cx="100" cy="88" r="46" fill="#56c79a"/>
+  <rect x="68" y="172" width="22" height="16" rx="8" fill="#43b58a"/>
+  <rect x="110" y="172" width="22" height="16" rx="8" fill="#43b58a"/>
+  <circle cx="68" cy="98" r="7" fill="#ff9fb2" opacity=".6"/><circle cx="132" cy="98" r="7" fill="#ff9fb2" opacity=".6"/>
+  ${ojos}${cejas}${MOUTH[m]}`;
+}
+
+const CLAVE="dinodia_v1";
+let datos={};
+try{datos=JSON.parse(localStorage.getItem(CLAVE)||"{}")}catch(e){datos={}}
+const guardar=()=>{try{localStorage.setItem(CLAVE,JSON.stringify(datos))}catch(e){}};
+const k=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const $=id=>document.getElementById(id);
+
+function racha(){
+  let d=new Date();
+  if(datos[k(d)]===undefined) d.setDate(d.getDate()-1);
+  let n=0;
+  while(datos[k(d)]!==undefined){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+function aviso(t){
+  $("avisotxt").textContent=t;$("aviso").style.display="block";
+  setTimeout(()=>$("aviso").style.display="none",2800);
+}
+function pintar(){
+  const hoy=new Date();
+  const dias=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  $("fecha").textContent="Hoy es "+dias[hoy.getDay()]+" "+hoy.getDate();
+  const m=datos[k(hoy)];
+  $("dino").innerHTML=dino(m===undefined?1:m);
+  $("msg").textContent=m===undefined?"¡Hola! Soy Rexi 🦖 ¿Cómo estás hoy?":MSG[m][hoy.getDate()%2];
+  $("caras").innerHTML="";
+  ANIMOS.forEach((a,i)=>{
+    const b=document.createElement("button");
+    b.className="cara"+(m===i?" sel":"");
+    b.innerHTML=a.e+"<small>"+a.t+"</small>";
+    b.onclick=()=>elegir(i);
+    $("caras").appendChild(b);
+  });
+  const r=racha();
+  $("racha").textContent=r;
+  $("total").textContent=Object.keys(datos).length;
+  $("semana").innerHTML="";
+  const ini=["L","M","X","J","V","S","D"];
+  const lunes=new Date();
+  lunes.setDate(lunes.getDate()-((lunes.getDay()+6)%7));
+  for(let i=0;i<7;i++){
+    const d=new Date(lunes);d.setDate(lunes.getDate()+i);
+    const v=datos[k(d)];
+    const el=document.createElement("div");
+    el.className="dsem";
+    el.innerHTML=(v===undefined?"·":ANIMOS[v].e)+"<small>"+ini[i]+"</small>";
+    if(k(d)===k(new Date())) el.style.outline="3px solid #2f8f6b";
+    $("semana").appendChild(el);
+  }
+  $("medallas").innerHTML="";
+  MEDALLAS.forEach(x=>{
+    const el=document.createElement("div");
+    el.className="med"+(r>=x.d?" ok":"");
+    el.innerHTML=x.i+"<small>"+x.n+"<br>"+x.d+(x.d===1?" día":" días")+"</small>";
+    $("medallas").appendChild(el);
+  });
+}
+function elegir(i){
+  const antes=racha();
+  datos[k(new Date())]=i;
+  guardar();
+  const despues=racha();
+  pintar();
+  const nueva=MEDALLAS.find(x=>antes<x.d&&despues>=x.d);
+  if(nueva) aviso("¡Nuevo dino desbloqueado: "+nueva.n+" "+nueva.i+"!");
+}
+pintar();
+</script>
+</body>
+</html>
