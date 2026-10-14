@@ -15,11 +15,18 @@
   .ultimo .em{font-size:56px;line-height:1.1}
   .ultimo .tx{font-size:20px;font-weight:bold;margin-top:4px}
   .ultimo .cu{font-size:13px;color:#6b8f80;margin-top:4px}
+  .stats{display:flex;gap:10px;margin-top:12px}
+  .stats div{flex:1;background:#fff;border-radius:16px;padding:10px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .stats b{display:block;font-size:24px;color:#e8833a}
+  .stats span{font-size:12px;color:#6b8f80}
   #aviso{display:none;background:#fff1d6;border:2px solid #e8833a;color:#8a4a12;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:15px}
-  .fila{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:8px 14px;margin-bottom:6px;box-shadow:0 2px 5px rgba(0,0,0,.06)}
+  .fila{background:#fff;border-radius:12px;padding:8px 14px;margin-bottom:6px;box-shadow:0 2px 5px rgba(0,0,0,.06)}
+  .fila .cab{display:flex;align-items:center;gap:10px}
   .fila .f{flex:1;font-size:14px;text-transform:capitalize}
   .fila .e{font-size:24px;width:34px;text-align:center}
   .fila .t{width:80px;font-size:13px;color:#6b8f80;text-align:right}
+  .fila .dep{font-size:13px;margin-top:6px;padding-top:6px;border-top:1px dashed #d4e4db;line-height:1.5}
+  .fila .nota{font-size:13px;margin-top:4px;color:#6b8f80;font-style:italic;white-space:pre-wrap}
   .fila.vacio{background:transparent;box-shadow:none;opacity:.55}
   #rec{display:block;margin:18px auto 0;background:#2f8f6b;color:#fff;border:0;border-radius:14px;padding:12px 30px;font-size:16px}
 </style>
@@ -30,6 +37,10 @@
   <p class="nube" id="nube"></p>
   <div id="aviso"></div>
   <div class="ultimo" id="ultimo"></div>
+  <div class="stats">
+    <div><b id="sdinos">0</b><span>dinos (de 50)</span></div>
+    <div><b id="srach">0</b><span>días seguidos</span></div>
+  </div>
   <h2>Últimos 30 días</h2>
   <div id="lista"></div>
   <button id="rec">Actualizar</button>
@@ -38,6 +49,8 @@
 <script>
 const API="https://api.github.com/repos/qaswed441/dinodia-datos/contents/alba.json";
 const ANIMOS=[{e:"😄",t:"Genial"},{e:"🙂",t:"Bien"},{e:"😐",t:"Regular"},{e:"😕",t:"Mal"},{e:"😢",t:"Muy mal"}];
+const SP=[["💪","Tren superior"],["🏃","Tren inferior"],["❤️","Cardio"],["🧗","Escalada"],["🏊","Natación"],["🚶","Paseo largo"],["⭐","Específico"],["🦵","Piernas musculatura"],["🤲","Kong manos"]];
+const PUNTOS=["","●","●●","●●●"];
 try{const h=new URLSearchParams(location.hash.slice(1));const x=h.get("t");
   if(x){localStorage.setItem("dinodia_tk",x);history.replaceState(null,"",location.pathname+location.search);}}catch(e){}
 const $=id=>document.getElementById(id);
@@ -46,18 +59,42 @@ const deb64=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,""))));
 const k=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const pf=s=>{const p=s.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);};
 const estado=t=>{$("nube").textContent=t};
+const norm=v=>{
+  if(typeof v==="number") return ANIMOS[v]?{a:v,d:{},n:"",nd:0}:null;
+  if(v&&typeof v==="object"&&ANIMOS[v.a]) return {a:v.a,d:v.d||{},n:v.n||"",nd:v.nd?1:0};
+  return null;
+};
+function textoDeporte(r){
+  if(r.nd) return "😴 Sin deporte";
+  const partes=[];
+  SP.forEach((s,i)=>{
+    const dd=r.d[i]; if(!dd) return;
+    const fr=[];
+    if(dd.m) fr.push("☀️ "+PUNTOS[dd.m]);
+    if(dd.t) fr.push("🌙 "+PUNTOS[dd.t]);
+    if(fr.length) partes.push(s[0]+" "+s[1]+": "+fr.join(" · "));
+  });
+  return partes.join("\n");
+}
 
-function pintar(datos){
+function pintar(crudo){
+  const datos={};
+  Object.keys(crudo).forEach(x=>{const r=norm(crudo[x]);if(r) datos[x]=r;});
   const hoy=new Date();hoy.setHours(0,0,0,0);
-  const claves=Object.keys(datos).filter(x=>ANIMOS[datos[x]]).sort();
+  const claves=Object.keys(datos).sort();
   const u=$("ultimo"),av=$("aviso");
   av.style.display="none";
+  $("sdinos").textContent=Math.min(claves.length,50);
+  let n=0,d=new Date(hoy);
+  if(datos[k(d)]===undefined) d.setDate(d.getDate()-1);
+  while(datos[k(d)]!==undefined){n++;d.setDate(d.getDate()-1);}
+  $("srach").textContent=n;
   if(!claves.length){
     u.innerHTML='<div class="tx">Todavía no hay registros</div>';
   }else{
     const ult=claves[claves.length-1];
     const dif=Math.round((hoy-pf(ult))/86400000);
-    const a=ANIMOS[datos[ult]];
+    const a=ANIMOS[datos[ult].a];
     const cuando=dif===0?"Hoy":dif===1?"Ayer":"Hace "+dif+" días";
     u.innerHTML='<div class="em">'+a.e+'</div><div class="tx">'+a.t+'</div><div class="cu">Último registro: '+cuando+' ('+pf(ult).toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})+')</div>';
     if(dif>=2){
@@ -67,11 +104,21 @@ function pintar(datos){
   }
   const lista=$("lista");lista.innerHTML="";
   for(let i=0;i<30;i++){
-    const d=new Date(hoy);d.setDate(hoy.getDate()-i);
-    const v=datos[k(d)];
+    const dd=new Date(hoy);dd.setDate(hoy.getDate()-i);
+    const r=datos[k(dd)];
     const f=document.createElement("div");
-    f.className="fila"+(ANIMOS[v]?"":" vacio");
-    f.innerHTML='<span class="f">'+d.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"})+'</span><span class="e">'+(ANIMOS[v]?ANIMOS[v].e:"·")+'</span><span class="t">'+(ANIMOS[v]?ANIMOS[v].t:"sin registro")+'</span>';
+    f.className="fila"+(r?"":" vacio");
+    const cab=document.createElement("div");cab.className="cab";
+    const s1=document.createElement("span");s1.className="f";s1.textContent=dd.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+    const s2=document.createElement("span");s2.className="e";s2.textContent=r?ANIMOS[r.a].e:"·";
+    const s3=document.createElement("span");s3.className="t";s3.textContent=r?ANIMOS[r.a].t:"sin registro";
+    cab.appendChild(s1);cab.appendChild(s2);cab.appendChild(s3);
+    f.appendChild(cab);
+    if(r){
+      const tx=textoDeporte(r);
+      if(tx){const dp=document.createElement("div");dp.className="dep";dp.style.whiteSpace="pre-line";dp.textContent=tx;f.appendChild(dp);}
+      if(r.n){const nt=document.createElement("div");nt.className="nota";nt.textContent="📝 "+r.n;f.appendChild(nt);}
+    }
     lista.appendChild(f);
   }
 }

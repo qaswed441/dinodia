@@ -20,6 +20,7 @@
   .cara{flex:1;background:#fff;border:3px solid transparent;border-radius:16px;padding:8px 0;font-size:30px;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:transform .15s}
   .cara small{display:block;font-size:10px;color:#6b8f80;margin-top:2px}
   .cara.sel{border-color:#2f8f6b;transform:scale(1.1);background:#eafaf2}
+  #editdep{display:none;margin:12px auto 0;background:#fff;color:#2f8f6b;border:2px solid #2f8f6b;border-radius:14px;padding:10px 20px;font-size:15px}
   .racha{display:flex;gap:10px;justify-content:center;margin-top:14px}
   .tarjeta{background:#fff;border-radius:16px;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,.08);flex:1}
   .tarjeta b{display:block;font-size:26px;color:#e8833a}
@@ -41,6 +42,22 @@
   #mnom{font-size:22px;font-weight:bold}
   #mnum{font-size:13px;color:#6b8f80;margin-bottom:12px}
   #mok{background:#2f8f6b;color:#fff;border:0;border-radius:14px;padding:12px 30px;font-size:16px}
+  /* pantalla de deporte */
+  #dep{position:fixed;inset:0;background:linear-gradient(#d9f2e6,#fdf6e3);overflow:auto;display:none;z-index:30}
+  #dep .in{max-width:460px;margin:0 auto;padding:18px 16px 110px}
+  #dep h2{font-size:20px;color:#2f8f6b;text-align:center;margin:6px 0 2px}
+  #dem{text-align:center;font-size:15px;color:#6b8f80;margin-bottom:12px}
+  .ayuda{font-size:12px;color:#6b8f80;text-align:center;margin:0 0 10px}
+  .fila{display:flex;align-items:center;gap:6px;background:#fff;border:2px solid transparent;border-radius:14px;padding:8px 10px;margin-bottom:6px;box-shadow:0 2px 5px rgba(0,0,0,.06)}
+  .fila.on{border-color:#2f8f6b;background:#eafaf2}
+  .fila .nom{flex:1;text-align:left;font-size:14px}
+  .fr{width:92px;background:#fff;border:2px solid #cfe0d7;border-radius:10px;padding:8px 2px;font-size:12px;color:#2d4a3e}
+  .fr.on{background:#2f8f6b;border-color:#2f8f6b;color:#fff;font-weight:bold}
+  #nod{width:100%;background:#fff;border:2px solid #cfe0d7;border-radius:14px;padding:12px;font-size:15px;margin:6px 0 10px;color:#2d4a3e}
+  #nod.on{background:#2f8f6b;border-color:#2f8f6b;color:#fff;font-weight:bold}
+  #nota{width:100%;height:80px;border:2px solid #cfe0d7;border-radius:14px;padding:10px;font-size:15px;font-family:inherit}
+  .barra{position:fixed;left:0;right:0;bottom:0;padding:12px 16px 16px;background:linear-gradient(transparent,#fdf6e3 35%)}
+  #listo{display:block;width:100%;max-width:428px;margin:0 auto;background:#2f8f6b;color:#fff;border:0;border-radius:16px;padding:15px;font-size:18px;font-weight:bold}
 </style>
 </head>
 <body>
@@ -54,6 +71,7 @@
 
   <h2>¿Cómo te sientes hoy?</h2>
   <div class="caras" id="caras"></div>
+  <button id="editdep">✏️ Deporte de hoy</button>
 
   <div class="racha">
     <div class="tarjeta"><b id="racha">0</b><span>días seguidos</span></div>
@@ -67,6 +85,16 @@
   <div class="grid50" id="coleccion"></div>
 </div>
 
+<div id="dep"><div class="in">
+  <h2>¿Qué deporte has hecho?</h2>
+  <div id="dem"></div>
+  <p class="ayuda">Pulsa ☀️ o 🌙 para marcar la intensidad: ● leve · ●● media · ●●● fuerte · otra pulsación lo quita.</p>
+  <div id="lsp"></div>
+  <button id="nod">😴 No he hecho deporte</button>
+  <textarea id="nota" placeholder="Notas (opcional)"></textarea>
+</div>
+<div class="barra"><button id="listo">¡Listo!</button></div></div>
+
 <div id="modal"><div class="caja">
   <div id="mtit"></div>
   <svg id="mdino" viewBox="0 0 200 200"></svg>
@@ -77,6 +105,8 @@
 
 <script>
 const ANIMOS=[{e:"😄",t:"Genial"},{e:"🙂",t:"Bien"},{e:"😐",t:"Regular"},{e:"😕",t:"Mal"},{e:"😢",t:"Muy mal"}];
+const SP=[["💪","Tren superior"],["🏃","Tren inferior"],["❤️","Cardio"],["🧗","Escalada"],["🏊","Natación"],["🚶","Paseo largo"],["⭐","Específico"],["🦵","Piernas musculatura"],["🤲","Kong manos"]];
+const PUNTOS=["","●","●●","●●●"];
 const MSG=[
  ["¡Qué alegría verte así! Hoy brillas más que un volcán en erupción 🌋","¡Rexi está bailando de contenta! Disfruta este día 💚"],
  ["Qué bien que hoy estés bien. Rexi se queda a tu lado 🦕","Un día tranquilo también es un tesoro. Cuídate mucho 💚"],
@@ -156,13 +186,24 @@ function dinoSVG(i){
   <circle cx="${hx}" cy="${hy}" r="${hr}" fill="${c}"/>${cara(hx,hy,hr)}${post}${accesorio(v,hx,hy,hr)}`;
 }
 
-/* ---------- datos ---------- */
+/* ---------- datos ----------
+   datos["2026-10-14"] = {a:ánimo 0-4, t:marca de tiempo, d:{"2":{m:2,t:1}}, n:"nota", nd:1}
+   d: índice de deporte -> m (mañana) y t (tarde) con intensidad 1-3
+   Los registros antiguos (un número) se convierten solos. */
 const CLAVE="dinodia_v1";
 const API="https://api.github.com/repos/qaswed441/dinodia-datos/contents/alba.json";
 try{const h=new URLSearchParams(location.hash.slice(1));const x=h.get("t");
   if(x){localStorage.setItem("dinodia_tk",x);history.replaceState(null,"",location.pathname+location.search);}}catch(e){}
+const norm=v=>{
+  if(typeof v==="number") return ANIMOS[v]?{a:v,t:0}:null;
+  if(v&&typeof v==="object"&&ANIMOS[v.a]) return {a:v.a,t:v.t||0,d:v.d||{},n:v.n||"",nd:v.nd?1:0};
+  return null;
+};
 let datos={},sha=null;
-try{datos=JSON.parse(localStorage.getItem(CLAVE)||"{}")}catch(e){datos={}}
+try{
+  const ld=JSON.parse(localStorage.getItem(CLAVE)||"{}");
+  Object.keys(ld).forEach(x=>{const r=norm(ld[x]);if(r) datos[x]=r;});
+}catch(e){datos={}}
 const guardar=()=>{try{localStorage.setItem(CLAVE,JSON.stringify(datos))}catch(e){}};
 const k=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const $=id=>document.getElementById(id);
@@ -182,7 +223,15 @@ async function bajar(){
     if(!r.ok) throw r.status;
     const j=await r.json(); sha=j.sha;
     const rem=JSON.parse(deb64(j.content));
-    Object.keys(rem).forEach(x=>{if(datos[x]===undefined) datos[x]=rem[x];});
+    Object.keys(rem).forEach(x=>{
+      const rr=norm(rem[x]); if(!rr) return;
+      const l=datos[x];
+      if(!l||(rr.t||0)>(l.t||0)) datos[x]=rr;
+    });
+    Object.keys(datos).forEach(x=>{
+      const rr=norm(rem[x]);
+      if(!rr||(rr.t||0)<(datos[x].t||0)) pend(1);
+    });
     guardar(); pintar(); estado("☁️ Sincronizado");
   }catch(e){estado(e===401||e===403?"⚠️ Token no válido (error "+e+")":"📴 Sin conexión");}
 }
@@ -211,7 +260,8 @@ function pintar(){
   const hoy=new Date();
   const dias=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   $("fecha").textContent="Hoy es "+dias[hoy.getDay()]+" "+hoy.getDate();
-  const m=datos[k(hoy)];
+  const reg=datos[k(hoy)];
+  const m=reg?reg.a:undefined;
   $("dino").innerHTML=rexi(m===undefined?1:m);
   $("msg").textContent=m===undefined?"¡Hola! Soy Rexi 🦖 ¿Cómo estás hoy?":MSG[m][hoy.getDate()%2];
   $("caras").innerHTML="";
@@ -222,6 +272,7 @@ function pintar(){
     b.onclick=()=>elegir(i);
     $("caras").appendChild(b);
   });
+  $("editdep").style.display=reg?"block":"none";
   $("racha").textContent=racha();
   $("total").textContent=Object.keys(datos).length;
   $("semana").innerHTML="";
@@ -233,7 +284,7 @@ function pintar(){
     const v=datos[k(d)];
     const el=document.createElement("div");
     el.className="dsem";
-    el.innerHTML=(v===undefined?"·":ANIMOS[v].e)+"<small>"+ini[i]+"</small>";
+    el.innerHTML=(v===undefined?"·":ANIMOS[v.a].e)+"<small>"+ini[i]+"</small>";
     if(k(d)===k(new Date())) el.style.outline="3px solid #2f8f6b";
     $("semana").appendChild(el);
   }
@@ -270,10 +321,61 @@ function fuegos(){
     if(t<150||ps.length) requestAnimationFrame(loop); else cv.style.display="none";
   })();
 }
-function elegir(i){
+
+/* ---------- pantalla de deporte ---------- */
+let edit=null;
+function abrirDep(a){
+  const ex=datos[k(new Date())];
+  edit={
+    a:a,
+    nuevo:ex===undefined,
+    d:ex?JSON.parse(JSON.stringify(ex.d||{})):{},
+    n:ex?(ex.n||""):"",
+    nd:ex?(ex.nd?1:0):0
+  };
+  $("dem").textContent=ANIMOS[a].e+" Hoy te sientes: "+ANIMOS[a].t;
+  $("nota").value=edit.n;
+  pintarDep();
+  $("dep").style.display="block";
+  $("dep").scrollTop=0;
+}
+function pintarDep(){
+  const l=$("lsp"); l.innerHTML="";
+  SP.forEach((s,i)=>{
+    const dd=edit.d[i]||{};
+    const fila=document.createElement("div");
+    fila.className="fila"+((dd.m||dd.t)?" on":"");
+    const nom=document.createElement("span");
+    nom.className="nom"; nom.textContent=s[0]+" "+s[1];
+    fila.appendChild(nom);
+    [["m","☀️ Mañana"],["t","🌙 Tarde"]].forEach(([f,txt])=>{
+      const b=document.createElement("button");
+      b.className="fr"+(dd[f]?" on":"");
+      b.textContent=txt+(dd[f]?" "+PUNTOS[dd[f]]:"");
+      b.onclick=()=>{
+        const v=((edit.d[i]&&edit.d[i][f])||0)+1;
+        if(!edit.d[i]) edit.d[i]={};
+        if(v>3) delete edit.d[i][f]; else edit.d[i][f]=v;
+        if(!edit.d[i].m&&!edit.d[i].t) delete edit.d[i];
+        edit.nd=0;
+        pintarDep();
+      };
+      fila.appendChild(b);
+    });
+    l.appendChild(fila);
+  });
+  $("nod").className=edit.nd?"on":"";
+}
+$("nod").onclick=()=>{edit.d={};edit.nd=1;pintarDep();};
+$("editdep").onclick=()=>{const r=datos[k(new Date())];if(r) abrirDep(r.a);};
+function elegir(i){abrirDep(i);}
+$("listo").onclick=()=>{
   const hk=k(new Date());
   const nuevo=datos[hk]===undefined;
-  datos[hk]=i; guardar(); pend(1); pintar();
+  datos[hk]={a:edit.a,t:Date.now(),d:edit.d,n:$("nota").value.trim(),nd:edit.nd};
+  guardar(); pend(1);
+  $("dep").style.display="none";
+  pintar();
   if(nuevo){
     fuegos();
     const n=Object.keys(datos).length;
@@ -281,7 +383,7 @@ function elegir(i){
     else aviso("¡Ya tienes los 50 dinos! 🎉");
   }
   subir();
-}
+};
 window.addEventListener("online",()=>{if(hayPend()) subir();});
 pintar();
 if(tk()) bajar().then(()=>{if(hayPend()) subir();});
